@@ -1,0 +1,65 @@
+<!doctype html><html lang="en" data-theme="dark"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>The Wisp guide — From a folder to your first request</title><meta name="description" content="Get started with Wisp: portable installation, TOML collections, requests, environments, authentication, and secrets."><link rel="icon" href="assets/favicon.png"><link rel="stylesheet" href="styles.css"><script src="script.js" defer></script></head><body><a class="skip" href="#main">Skip to content</a><header class="site-header wrap"><a class="brand" href="./"><img src="assets/wisp.svg" alt="" width="40" height="40">wisp.</a><nav aria-label="Main navigation"><a href="index.html#features">Why Wisp</a><a href="index.html#agents">For agents</a><a href="guide.html" aria-current="page">Guide ↗</a></nav><div class="header-actions"><button class="theme-toggle" type="button" aria-label="Switch to light theme">☼</button><a class="small-link" href="https://github.com/AindriuB/wisp">GitHub ↗</a></div></header>
+<main class="guide-layout wrap" id="main"><aside class="guide-nav" aria-label="Guide contents"><strong>THE WISP GUIDE</strong><a href="#install">01 &nbsp; Get Wisp</a><a href="#first-request">02 &nbsp; First request</a><a href="#toml">03 &nbsp; TOML collections</a><a href="#environments">04 &nbsp; Environments</a><a href="#auth">05 &nbsp; Auth & secrets</a><a href="#bodies">06 &nbsp; Request bodies</a><a href="#workflow">07 &nbsp; Everyday use</a><a href="#agent-tools">08 &nbsp; Agent direction</a></aside><article class="guide-content"><span class="section-label">A FOLDER. A FEW FILES. YOUR API.</span><h1>Get to know Wisp.</h1><p class="guide-intro">From opening the app to keeping a collection in Git. Start with a small, working example, then make it your own.</p><p>This guide covers the desktop workflow and the collection format used in 0.2.0. Upcoming CLI features are marked separately.</p>
+<section id="install"><h2>01 / Get Wisp</h2><p>Open the <a href="https://github.com/AindriuB/wisp/releases/latest">latest release</a>, download the archive for your platform and the matching <code>SHA256SUMS</code> file, and verify the checksum before unpacking.</p><table><thead><tr><th>Platform</th><th>Choose</th><th>Open</th></tr></thead><tbody><tr><td>macOS</td><td>macos-arm64.zip</td><td>Wisp.app</td></tr><tr><td>Windows</td><td>windows-x64.zip</td><td>wisp.exe</td></tr><tr><td>Linux</td><td>linux-x64.tar.gz</td><td>wisp</td></tr></tbody></table><p>macOS requires Apple silicon. Linux requires glibc 2.39 or newer and a working Vulkan driver. See the <a href="https://github.com/AindriuB/wisp#install">installation instructions</a> for checksum commands, Linux packages, and release-specific signing details.</p><p>On Windows and Linux, a file named <code>portable</code> beside the executable keeps settings and data alongside it. On any platform, an absolute <code>WISP_DATA_DIR</code> overrides the data location. On macOS, use that override for portable data.</p></section>
+<section id="first-request"><h2>02 / Send your first request</h2><ol><li>Create a folder named <code>hello-api</code> on your machine.</li><li>Add the two files below. The example uses the public httpbin test service and needs no credentials.</li><li>Open Wisp, choose <strong>Open collection</strong>, and select <code>hello-api</code>.</li><li>Choose <strong>Get a response</strong> in the sidebar, then click <strong>Send</strong>.</li><li>Inspect the response body, status, and timing. You can edit the request in Wisp and save it back to its TOML file.</li></ol><div class="code-window"><div class="code-title">hello-api/collection.toml <button class="copy-button" type="button">Copy</button></div><pre><code>format = 1
+
+[vars]
+baseUrl = "https://httpbin.org"</code></pre></div><div class="code-window"><div class="code-title">hello-api/get-response.toml <button class="copy-button" type="button">Copy</button></div><pre><code>name = "Get a response"
+method = "GET"
+url = "{{baseUrl}}/get"
+
+[[params]]
+name = "hello"
+value = "wisp"
+enabled = true</code></pre></div><p>The example makes a real request to a third-party test service when you send it from Wisp. The landing page’s interactive preview is a local illustration.</p></section>
+<section id="toml"><h2>03 / A collection is an ordinary folder</h2><p><code>collection.toml</code> marks the root and holds shared defaults. Each request has its own TOML file. Subfolders group requests; an optional <code>folder.toml</code> provides folder defaults and ordering.</p><div class="code-window"><div class="code-title">A typical collection</div><pre><code>hello-api/
+├── collection.toml
+├── get-response.toml
+├── users/
+│   ├── folder.toml
+│   ├── get-user.toml
+│   ├── create-user.toml
+│   └── create-user.body.json
+├── environments/
+│   ├── dev.toml
+│   └── dev.secrets.toml   # keep out of Git
+└── .gitignore</code></pre></div><p>TOML uses <code>key = value</code> pairs. Strings are quoted, <code>#</code> begins a comment, <code>[vars]</code> starts a table, and <code>[[headers]]</code> starts a new entry in a list. Keys after a table heading belong to that table until the next heading.</p><h3>Variables and path parameters</h3><p>Use <code>{{baseUrl}}</code> to substitute a variable. Use <code>{id}</code> in a URL path and define it in <code>[path]</code>. Use <code>[[params]]</code> for query parameters and <code>[[headers]]</code> for headers.</p><div class="code-window"><div class="code-title">users/get-user.toml <button class="copy-button" type="button">Copy</button></div><pre><code>name = "Get user"
+method = "GET"
+url = "{{baseUrl}}/users/{id}"
+
+[path]
+id = "42"
+
+[[headers]]
+name = "Accept"
+value = "application/json"
+enabled = true</code></pre></div><p>This request is a template for your own API. Update <code>baseUrl</code> to a service that provides a <code>/users/42</code> endpoint before sending it.</p><h3>Folder ordering</h3><div class="code-window"><div class="code-title">users/folder.toml <button class="copy-button" type="button">Copy</button></div><pre><code>order = ["get-user.toml", "create-user.toml"]</code></pre></div><p>Keep collection files and body sidecars in Git so changes can be reviewed together.</p></section>
+<section id="environments"><h2>04 / Switch environments, keep the request</h2><p>Add environment files under <code>environments/</code>. The filename becomes the environment name. Select it in Wisp before sending.</p><div class="code-window"><div class="code-title">environments/dev.toml <button class="copy-button" type="button">Copy</button></div><pre><code>[vars]
+baseUrl = "https://httpbin.org"</code></pre></div><p>For your own API, add a <code>staging.toml</code> with a different <code>baseUrl</code>. The request can continue using <code>{{baseUrl}}</code>. Keep shared, non-secret values in the environment file.</p></section>
+<section id="auth"><h2>05 / Inherit auth. Keep secrets separate.</h2><p>Put shared authentication in <code>collection.toml</code> and let requests inherit it. Wisp supports Basic, Bearer, API key, Digest, AWS Signature V4, and OAuth2. Here is a Bearer example for an API that needs a token.</p><div class="code-window"><div class="code-title">collection.toml <button class="copy-button" type="button">Copy</button></div><pre><code>format = 1
+
+[vars]
+baseUrl = "https://api.example.com"
+
+[auth]
+type = "bearer"
+token = "{{token}}"</code></pre></div><div class="code-window"><div class="code-title">environments/dev.secrets.toml <button class="copy-button" type="button">Copy</button></div><pre><code>[vars]
+token = "replace-with-your-local-token"</code></pre></div><p>Select the <code>dev</code> environment so Wisp can resolve its token. Add a plain <code>dev.toml</code> file too; it can contain your environment’s non-secret variables. Keep the secrets file on your machine.</p><div class="code-window"><div class="code-title">.gitignore <button class="copy-button" type="button">Copy</button></div><pre><code>*.secrets.toml
+.wisp-binding
+.wisp/</code></pre></div><div class="notice">Check the files you stage for a commit. Ignoring a file does not remove it from Git if it was already tracked. Rotate a token if you accidentally publish it.</div><p>You can also choose the OS keychain for an environment in Wisp. Secrets files are the default; portable mode and systems without a keychain use a secrets file fallback. The app reports that fallback.</p><p>To make inheritance explicit in a request, add <code>[auth]</code> with <code>type = "inherit"</code>. To make that request unauthenticated, use <code>type = "none"</code>.</p></section>
+<section id="bodies"><h2>06 / Keep bodies alongside requests</h2><p>For JSON, store the payload in a sidecar file and reference it from the request. This keeps both the request configuration and the payload readable in a diff.</p><div class="code-window"><div class="code-title">users/create-user.toml <button class="copy-button" type="button">Copy</button></div><pre><code>name = "Create user"
+method = "POST"
+url = "{{baseUrl}}/users"
+
+[body]
+type = "json"
+file = "create-user.body.json"</code></pre></div><div class="code-window"><div class="code-title">users/create-user.body.json <button class="copy-button" type="button">Copy</button></div><pre><code>{
+  "name": "Alex Morgan",
+  "role": "developer"
+}</code></pre></div><p>The body file must be a plain filename in the same folder as the request. Change the URL and payload to match your API. Sending a POST can create or change data.</p></section>
+<section id="workflow"><h2>07 / Make yourself at home</h2><ul><li><strong>Command palette:</strong> press ⌘K on macOS or Ctrl+K on Windows and Linux to find commands, requests, and environments.</li><li><strong>Save changes:</strong> use ⌘S or Ctrl+S. Wisp prompts before discarding unsaved changes during normal quit and tab close. System logout or forced termination can discard drafts, so save before leaving.</li><li><strong>Bring existing work:</strong> use Import for curl commands, Postman v2.1 collections, and OpenAPI 3 JSON or YAML. Read the warnings report; Postman scripts are not translated.</li><li><strong>Review history:</strong> reopen a response or resend a historical request. Resend uses your current environment.</li><li><strong>Personalise the app:</strong> use the command palette to toggle the theme. Personal settings live outside your collection, so they do not become team defaults.</li></ul><h3>Personal TOML settings</h3><p>Personal preferences live in <code>settings.toml</code>, separate from <code>collection.toml</code>. Close Wisp before editing this file so the app does not overwrite your change on exit.</p><div class="code-window"><div class="code-title">settings.toml · preference example <button class="copy-button" type="button">Copy</button></div><pre><code>theme = "dark"      # "system", "light", or "dark"
+split = "vertical"  # "vertical" or "horizontal"</code></pre></div><p>Normally this file is under <code>~/Library/Application Support/wisp/</code> on macOS, <code>%APPDATA%\wisp\</code> on Windows, or <code>$XDG_CONFIG_HOME/wisp/</code> (default <code>~/.config/wisp/</code>) on Linux. An absolute <code>WISP_DATA_DIR</code> puts it in that directory. Windows and Linux portable mode puts it beside the executable.</p><h3>When a request does not work</h3><p>Check that the right environment is selected, each <code>{{variable}}</code> has a value, and each <code>{pathParameter}</code> has a matching entry in <code>[path]</code>. Check inherited auth and enabled headers. For connection problems, inspect the timing panel and confirm the service is reachable.</p><p>See the <a href="https://github.com/AindriuB/wisp#readme">app README</a> for platform details and known limitations, or <a href="https://github.com/AindriuB/wisp/issues">report an issue</a>.</p></section>
+<section id="agent-tools"><h2>08 / A foundation for agent workflows</h2><p>The next step is a read-only CLI with structured JSON: validate a collection, inspect its contents, and explain a resolved request. These commands are under development for the 0.3 direction; they are not part of the 0.2.0 desktop workflow above.</p><div class="code-window"><div class="code-title">Upcoming CLI · illustrative usage</div><pre><code>wisp-cli validate ./hello-api --json
+wisp-cli inspect ./hello-api --env dev --json
+wisp-cli explain ./hello-api get-response.toml --env dev --json</code></pre></div><p>The planned 0.4 direction adds execution through a shared service layer and redacted context snapshots. MCP integration is deferred, with no committed release date. Follow the <a href="https://github.com/AindriuB/wisp/blob/main/docs/plan/roadmap.md">development roadmap</a> for the current scope.</p></section>
+</article></main><footer class="wrap site-footer"><a class="brand" href="./"><img src="assets/wisp.svg" width="30" height="30" alt="">wisp.</a><span>A small tool for the work in front of you.</span><div><a href="index.html#download">Get Wisp</a><a href="https://github.com/AindriuB/wisp">Source ↗</a></div></footer></body></html>
